@@ -142,9 +142,26 @@
         let currentUser = null;
         const APP_ID = 'gakkai_app'; 
 
-        // 日本時間(JST)の日付を YYYY-MM-DD で取得
+        // 日本時間(JST)の日付をブラウザ環境に依存せず YYYY-MM-DD で確実に取得
         function getJSTDateStr() {
-            return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+            const d = new Date();
+            d.setMinutes(d.getMinutes() + d.getTimezoneOffset() + 540);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        // 日付が昨日以前かどうかを厳密に判定
+        function isBeforeToday(dateStr) {
+            if (!dateStr || typeof dateStr !== 'string') return true;
+            const match = dateStr.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+            if (!match) return true;
+            const tDate = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+            const todayStr = getJSTDateStr();
+            const tMatch = todayStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            const todayDate = new Date(parseInt(tMatch[1]), parseInt(tMatch[2]) - 1, parseInt(tMatch[3]));
+            return tDate.getTime() < todayDate.getTime();
         }
 
         const showError = (msg) => {
@@ -210,20 +227,13 @@
 
         // 自動消去ロジック：完了済みかつ「完了日が今日より前」のタスクを削除。
         function autoCleanupOldTasks(projectsList) {
-            const todayStr = getJSTDateStr();
             let hasChanged = false;
 
             projectsList.forEach(proj => {
                 const initialLen = proj.tasks.length;
                 proj.tasks = proj.tasks.filter(t => {
                     if (t.completed) {
-                        // 完了日の記録がないタスクは「古いデータ」とみなして即削除する
-                        if (!t.completedAt || typeof t.completedAt !== 'string') {
-                            hasChanged = true;
-                            return false;
-                        }
-                        // 完了日が今日より前（昨日以前）なら削除
-                        if (t.completedAt < todayStr) {
+                        if (isBeforeToday(t.completedAt)) {
                             hasChanged = true;
                             return false;
                         }
@@ -237,19 +247,18 @@
         function setupFirestoreListener() {
             if (!currentUser) return;
             const projectsRef = collection(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'projects');
-            onSnapshot(projectsRef, (snapshot) => {
+            onSnapshot(projectsRef, async (snapshot) => {
                 let syncedProjects = [];
                 snapshot.forEach(doc => syncedProjects.push({ id: doc.id, ...doc.data() }));
                 
                 // 自動整理が必要なプロジェクトを特定して保存し直す
                 let projectsToSave = [];
-                const todayStr = getJSTDateStr();
 
                 syncedProjects.forEach(proj => {
                     const initialLen = proj.tasks.length;
                     proj.tasks = proj.tasks.filter(t => {
                         if (t.completed) {
-                            if (!t.completedAt || t.completedAt < todayStr) return false;
+                            if (isBeforeToday(t.completedAt)) return false;
                         }
                         return true;
                     });
@@ -259,7 +268,10 @@
                 });
 
                 if (projectsToSave.length > 0) {
-                    projectsToSave.forEach(async (p) => await saveProject(p));
+                    // 通信の競合を防ぐため、順番に確実に保存（直列処理）
+                    for (const p of projectsToSave) {
+                        await saveProject(p);
+                    }
                 }
                 
                 window.projects = syncedProjects;
