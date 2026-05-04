@@ -38,6 +38,7 @@
 
         <div id="error-display" class="hidden mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold whitespace-pre-wrap"></div>
 
+        <!-- 学会追加フォーム -->
         <div class="bg-white border border-slate-200 p-6 rounded-2xl mb-8 shadow-sm">
             <h2 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
                 <span class="text-indigo-600">➕</span> 新しい学会の予定を追加
@@ -88,6 +89,7 @@
             </div>
         </div>
 
+        <!-- メインコンテンツ領域 -->
         <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
             <div class="flex border-b border-slate-200 bg-slate-50">
                 <button onclick="switchTab('timeline')" id="tab-timeline" class="flex-1 py-4 text-center tab-active hover:bg-slate-100 transition text-sm">
@@ -141,11 +143,8 @@
         let currentUser = null;
         const APP_ID = 'gakkai_app'; 
 
-        // 日本時間(JST)の YYYY-MM-DD を取得するヘルパー
         function getJSTDateStr() {
-            const now = new Date();
-            // 日本時間のタイムゾーンに合わせた日付を YYYY-MM-DD 形式で取得
-            return now.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+            return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
         }
 
         const showError = (msg) => {
@@ -209,22 +208,17 @@
             window.render();
         }
 
-        // 自動消去ロジック：完了済みかつ「完了日が今日より前」のタスクを削除
         function autoCleanupOldTasks(projectsList) {
             const todayStr = getJSTDateStr();
             let hasChanged = false;
-
             projectsList.forEach(proj => {
-                const initialLen = proj.tasks.length;
                 proj.tasks = proj.tasks.filter(t => {
                     if (t.completed) {
-                        // 日付データがない古いタスクへの対応
                         if (!t.completedAt) {
-                            t.completedAt = todayStr; // 今日完了したものとして記録（明日消える）
+                            t.completedAt = todayStr;
                             hasChanged = true;
                             return true;
                         }
-                        // 完了日が「今日より前（昨日以前）」なら削除
                         if (t.completedAt < todayStr) {
                             hasChanged = true;
                             return false;
@@ -242,7 +236,6 @@
             onSnapshot(projectsRef, (snapshot) => {
                 let syncedProjects = [];
                 snapshot.forEach(doc => syncedProjects.push({ id: doc.id, ...doc.data() }));
-                
                 if (autoCleanupOldTasks(syncedProjects)) {
                     syncedProjects.forEach(async (p) => await saveProject(p));
                 }
@@ -332,7 +325,6 @@
                 const task = proj.tasks.find(t => t.id === taskId);
                 if (task) {
                     task.completed = !task.completed;
-                    // 日本時間の日付を保存
                     task.completedAt = task.completed ? getJSTDateStr() : null;
                     await saveProject(proj);
                 }
@@ -433,8 +425,15 @@
         }
 
         const renderProjectView = (container) => {
+            // 学会開始日でソート（昇順：早いものが上）
+            const sortedProjects = [...window.projects].sort((a, b) => {
+                const dateA = new Date(a.startDate || 0);
+                const dateB = new Date(b.startDate || 0);
+                return dateA - dateB;
+            });
+
             let html = '<div class="space-y-4">';
-            window.projects.forEach(proj => {
+            sortedProjects.forEach(proj => {
                 const done = proj.tasks.filter(t => t.completed).length;
                 const progress = Math.round((done / proj.tasks.length) * 100) || 0;
                 html += `
@@ -466,7 +465,7 @@
                         </div>
                     </div>`}
                     <div class="${proj.isExpanded && !proj.isEditing ? 'block' : 'hidden'} border-t bg-slate-50">
-                        <table class="w-full text-sm">
+                        <table class="w-full text-sm text-left">
                             <tbody>
                                 ${proj.tasks.map(t => `<tr class="${t.completed ? 'opacity-40' : ''} border-b border-slate-200 hover:bg-white transition">
                                     <td class="p-3 w-10 text-center"><input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${proj.id}', '${t.id}')" class="w-4 h-4 accent-indigo-600"></td>
