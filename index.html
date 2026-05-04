@@ -32,15 +32,12 @@
                     <button id="login-btn" class="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-indigo-700 transition shadow hidden">Googleでログイン</button>
                     <button id="logout-btn" class="bg-slate-100 text-slate-600 px-3 py-1.5 rounded text-xs font-bold hover:bg-slate-200 transition border border-slate-200 hidden">ログアウト</button>
                 </div>
-                <div id="overview-stats" class="text-right text-sm text-slate-600 font-bold bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200 hidden md:block">
-                    <!-- 統計情報 -->
-                </div>
+                <div id="overview-stats" class="text-right text-sm text-slate-600 font-bold bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200 hidden md:block"></div>
             </div>
         </header>
 
         <div id="error-display" class="hidden mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold whitespace-pre-wrap"></div>
 
-        <!-- 学会追加フォーム -->
         <div class="bg-white border border-slate-200 p-6 rounded-2xl mb-8 shadow-sm">
             <h2 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
                 <span class="text-indigo-600">➕</span> 新しい学会の予定を追加
@@ -91,7 +88,6 @@
             </div>
         </div>
 
-        <!-- タブ表示エリア -->
         <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
             <div class="flex border-b border-slate-200 bg-slate-50">
                 <button onclick="switchTab('timeline')" id="tab-timeline" class="flex-1 py-4 text-center tab-active hover:bg-slate-100 transition text-sm">
@@ -101,13 +97,12 @@
                     📁 学会別に管理・編集
                 </button>
             </div>
-
             <div id="content-area" class="p-6 bg-slate-50 min-h-[500px]">
                 <div class="text-center py-20 text-slate-400 font-bold">データを読み込み中...</div>
             </div>
         </div>
         <div class="mt-4 text-center text-slate-400 text-[10px]">
-            ※チェックを入れた（完了した）タスクは、翌日になると自動的にリストから消去されます。
+            ※チェックを入れた（完了した）タスクは、日本時間の翌日になると自動的に消去されます。
         </div>
     </div>
 
@@ -116,7 +111,6 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Firebase Configuration ---
         const myFirebaseConfig = {
             apiKey: "AIzaSyC7mMddmukCPXkPX7Z2MD5fTcCFmUXnKGw",
             authDomain: "gakkai-task-manager.firebaseapp.com",
@@ -129,7 +123,6 @@
         window.projects = [];
         window.currentTab = 'timeline';
 
-        // デフォルトタスクのテンプレート
         const TASK_TEMPLATES = [
             { type: 'join', name: '入会手続き', offsetDays: -120 },
             { type: 'annual_fee', name: '年会費支払い', offsetDays: -120 },
@@ -138,7 +131,7 @@
             { type: 'register', name: '参加申し込み', offsetDays: -60 },
             { type: 'flight', name: '航空券購入', offsetDays: -60 },
             { type: 'hotel', name: 'ホテル予約', offsetDays: -60 },
-            { type: 'trip_paperwork', name: '出張手続き', offsetDays: -30 }, // 追加
+            { type: 'trip_paperwork', name: '出張手続き', offsetDays: -30 },
             { type: 'paper', name: '発表予稿の作成', offsetDays: -30 },
             { type: 'slide', name: 'ポスター・スライドの作成', offsetDays: -21 },
             { type: 'poster_order', name: 'ポスターの発注', offsetDays: -14 }
@@ -147,6 +140,13 @@
         let app, auth, db, provider;
         let currentUser = null;
         const APP_ID = 'gakkai_app'; 
+
+        // 日本時間(JST)の YYYY-MM-DD を取得するヘルパー
+        function getJSTDateStr() {
+            const now = new Date();
+            // 日本時間のタイムゾーンに合わせた日付を YYYY-MM-DD 形式で取得
+            return now.toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+        }
 
         const showError = (msg) => {
             const el = document.getElementById('error-display');
@@ -157,34 +157,19 @@
             }
         };
 
-        // --- Auth Setup ---
         try {
             app = initializeApp(myFirebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
             provider = new GoogleAuthProvider();
 
-            const loginBtn = document.getElementById('login-btn');
-            const logoutBtn = document.getElementById('logout-btn');
-            const userInfo = document.getElementById('user-info');
-            const syncStatus = document.getElementById('sync-status');
-
-            loginBtn.onclick = async () => {
-                try {
-                    await signInWithPopup(auth, provider);
-                } catch (error) {
-                    showError("ログイン失敗: " + error.message);
-                }
-            };
-
-            logoutBtn.onclick = async () => {
-                await signOut(auth);
-                window.projects = []; 
-                window.render();
-            };
-
             onAuthStateChanged(auth, (user) => {
                 currentUser = user;
+                const loginBtn = document.getElementById('login-btn');
+                const logoutBtn = document.getElementById('logout-btn');
+                const userInfo = document.getElementById('user-info');
+                const syncStatus = document.getElementById('sync-status');
+                
                 if (user) {
                     userInfo.innerHTML = `👤 <span class="font-bold text-indigo-700">${user.displayName}</span> さん`;
                     loginBtn.classList.add('hidden');
@@ -199,11 +184,19 @@
                     fallbackInit();
                 }
             });
+
+            document.getElementById('login-btn').onclick = async () => {
+                try { await signInWithPopup(auth, provider); } catch (e) { showError("ログイン失敗: " + e.message); }
+            };
+            document.getElementById('logout-btn').onclick = async () => {
+                await signOut(auth);
+                window.projects = []; 
+                window.render();
+            };
         } catch (e) {
             fallbackInit();
         }
 
-        // --- Data Handling ---
         function fallbackInit() {
             const savedData = localStorage.getItem('gakkai_projects_v1');
             if (savedData) {
@@ -216,14 +209,26 @@
             window.render();
         }
 
+        // 自動消去ロジック：完了済みかつ「完了日が今日より前」のタスクを削除
         function autoCleanupOldTasks(projectsList) {
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = getJSTDateStr();
             let hasChanged = false;
+
             projectsList.forEach(proj => {
+                const initialLen = proj.tasks.length;
                 proj.tasks = proj.tasks.filter(t => {
-                    if (t.completed && t.completedAt && t.completedAt < todayStr) {
-                        hasChanged = true;
-                        return false;
+                    if (t.completed) {
+                        // 日付データがない古いタスクへの対応
+                        if (!t.completedAt) {
+                            t.completedAt = todayStr; // 今日完了したものとして記録（明日消える）
+                            hasChanged = true;
+                            return true;
+                        }
+                        // 完了日が「今日より前（昨日以前）」なら削除
+                        if (t.completedAt < todayStr) {
+                            hasChanged = true;
+                            return false;
+                        }
                     }
                     return true;
                 });
@@ -237,6 +242,7 @@
             onSnapshot(projectsRef, (snapshot) => {
                 let syncedProjects = [];
                 snapshot.forEach(doc => syncedProjects.push({ id: doc.id, ...doc.data() }));
+                
                 if (autoCleanupOldTasks(syncedProjects)) {
                     syncedProjects.forEach(async (p) => await saveProject(p));
                 }
@@ -269,7 +275,6 @@
             }
         }
 
-        // --- UI Logic ---
         window.importProject = async function() {
             const name = document.getElementById('simName').value;
             const startDate = document.getElementById('simStartDate').value;
@@ -309,14 +314,15 @@
         }
 
         window.addCustomTask = async function(projectId) {
-            const name = document.getElementById(`customTaskName_${projectId}`).value;
-            const date = document.getElementById(`customTaskDate_${projectId}`).value;
-            if (!name || !date) return;
+            const nameEl = document.getElementById(`customTaskName_${projectId}`);
+            const dateEl = document.getElementById(`customTaskDate_${projectId}`);
+            if (!nameEl || !dateEl || !nameEl.value || !dateEl.value) return;
             const proj = window.projects.find(p => p.id === projectId);
             if (proj) {
-                proj.tasks.push({ id: 'task_' + Math.random().toString(36).substr(2, 9), name, dueDate: date, completed: false, isCustom: true });
+                proj.tasks.push({ id: 'task_' + Math.random().toString(36).substr(2, 9), name: nameEl.value, dueDate: dateEl.value, completed: false, isCustom: true });
                 proj.tasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
                 await saveProject(proj);
+                nameEl.value = ''; dateEl.value = '';
             }
         }
 
@@ -326,7 +332,8 @@
                 const task = proj.tasks.find(t => t.id === taskId);
                 if (task) {
                     task.completed = !task.completed;
-                    task.completedAt = task.completed ? new Date().toISOString().split('T')[0] : null;
+                    // 日本時間の日付を保存
+                    task.completedAt = task.completed ? getJSTDateStr() : null;
                     await saveProject(proj);
                 }
             }
@@ -380,41 +387,35 @@
 
         window.switchTab = (tabId) => {
             window.currentTab = tabId;
-            const tlTab = document.getElementById('tab-timeline');
-            const pjTab = document.getElementById('tab-project');
-            if (tlTab && pjTab) {
-                tlTab.className = `flex-1 py-4 text-center ${tabId === 'timeline' ? 'tab-active' : 'tab-inactive'} hover:bg-slate-100 transition text-sm`;
-                pjTab.className = `flex-1 py-4 text-center ${tabId === 'project' ? 'tab-active' : 'tab-inactive'} hover:bg-slate-100 transition text-sm`;
-            }
             window.render();
         }
 
         window.getGoogleCalendarUrl = (tName, dStr, cName, pTitle) => {
             if (!dStr) return '#';
             const d = new Date(dStr); const d2 = new Date(d); d2.setDate(d2.getDate() + 1);
-            const f = (dt) => `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(2, '0')}${String(dt.getDate()).padStart(2, '0')}`;
+            const f = (dt) => dt.toLocaleDateString('sv-SE').replace(/-/g, '');
             const details = encodeURIComponent(`学会タスク。${pTitle ? '\n発表: ' + pTitle : ''}`);
             return `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`[${cName}] ${tName}`)}&dates=${f(d)}/${f(d2)}&details=${details}`;
         }
 
         window.getFormatBadge = (format) => {
             if(!format) return '';
-            const colors = {
-                '口頭': 'bg-blue-50 text-blue-600 border-blue-200',
-                'ポスター': 'bg-emerald-50 text-emerald-600 border-emerald-200',
-                'パネル': 'bg-purple-50 text-purple-600 border-purple-200',
-                'デモ': 'bg-amber-50 text-amber-600 border-amber-200',
-                'その他': 'bg-slate-50 text-slate-600 border-slate-200'
-            };
+            const colors = { '口頭': 'bg-blue-50 text-blue-600 border-blue-200', 'ポスター': 'bg-emerald-50 text-emerald-600 border-emerald-200', 'パネル': 'bg-purple-50 text-purple-600 border-purple-200', 'デモ': 'bg-amber-50 text-amber-600 border-amber-200', 'その他': 'bg-slate-50 text-slate-600 border-slate-200' };
             return `<span class="inline-block px-1.5 py-0.5 rounded border text-[9px] font-bold ${colors[format] || colors['その他']} ml-1">${format}</span>`;
         }
 
-        // --- View Rendering ---
         window.render = () => {
             const container = document.getElementById('content-area');
             const statsEl = document.getElementById('overview-stats');
-            if (!container) return;
+            const tlTab = document.getElementById('tab-timeline');
+            const pjTab = document.getElementById('tab-project');
             
+            if (tlTab && pjTab) {
+                tlTab.className = `flex-1 py-4 text-center ${window.currentTab === 'timeline' ? 'tab-active' : 'tab-inactive'} hover:bg-slate-100 transition text-sm`;
+                pjTab.className = `flex-1 py-4 text-center ${window.currentTab === 'project' ? 'tab-active' : 'tab-inactive'} hover:bg-slate-100 transition text-sm`;
+            }
+
+            if (!container) return;
             if (window.projects.length === 0) {
                 container.innerHTML = `<div class="text-center py-20 text-slate-400 font-bold">学会プロジェクトがありません</div>`;
                 if (statsEl) statsEl.classList.add('hidden');
@@ -442,16 +443,7 @@
                     <div class="p-4 bg-indigo-50 grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
                         <div class="md:col-span-1">学会名: <input id="editName_${proj.id}" value="${proj.name}" class="w-full border p-2 rounded"></div>
                         <div class="md:col-span-2">発表タイトル: <input id="editTitle_${proj.id}" value="${proj.presentationTitle}" class="w-full border p-2 rounded"></div>
-                        <div>形式: 
-                            <select id="editFormat_${proj.id}" class="w-full border p-2 rounded">
-                                <option value="" ${proj.presentationFormat === '' ? 'selected' : ''}>未定</option>
-                                <option value="口頭" ${proj.presentationFormat === '口頭' ? 'selected' : ''}>口頭</option>
-                                <option value="ポスター" ${proj.presentationFormat === 'ポスター' ? 'selected' : ''}>ポスター</option>
-                                <option value="パネル" ${proj.presentationFormat === 'パネル' ? 'selected' : ''}>パネル</option>
-                                <option value="デモ" ${proj.presentationFormat === 'デモ' ? 'selected' : ''}>デモ</option>
-                                <option value="その他" ${proj.presentationFormat === 'その他' ? 'selected' : ''}>その他</option>
-                            </select>
-                        </div>
+                        <div>形式: <select id="editFormat_${proj.id}" class="w-full border p-2 rounded"><option value="" ${proj.presentationFormat === '' ? 'selected' : ''}>未定</option><option value="口頭" ${proj.presentationFormat === '口頭' ? 'selected' : ''}>口頭</option><option value="ポスター" ${proj.presentationFormat === 'ポスター' ? 'selected' : ''}>ポスター</option><option value="パネル" ${proj.presentationFormat === 'パネル' ? 'selected' : ''}>パネル</option><option value="デモ" ${proj.presentationFormat === 'デモ' ? 'selected' : ''}>デモ</option><option value="その他" ${proj.presentationFormat === 'その他' ? 'selected' : ''}>その他</option></select></div>
                         <div>開始: <input type="date" id="editStartDate_${proj.id}" value="${proj.startDate}" class="w-full border p-2 rounded"></div>
                         <div>終了: <input type="date" id="editEndDate_${proj.id}" value="${proj.endDate}" class="w-full border p-2 rounded"></div>
                         <div>開催地: <input type="text" id="editLocation_${proj.id}" value="${proj.location}" class="w-full border p-2 rounded"></div>
@@ -501,19 +493,12 @@
             <div class="bg-white border rounded-xl shadow-sm overflow-hidden">
                 <table class="w-full text-sm text-left">
                     <thead class="bg-slate-900 text-white text-[11px] uppercase tracking-wider">
-                        <tr>
-                            <th class="p-3 w-10 text-center">完了</th>
-                            <th class="p-3 w-32">期日</th>
-                            <th class="p-3">学会 / タスク</th>
-                            <th class="p-3 w-24 text-center">操作</th>
-                        </tr>
+                        <tr><th class="p-3 w-10 text-center">完了</th><th class="p-3 w-32">期日</th><th class="p-3">学会 / タスク</th><th class="p-3 w-24 text-center">操作</th></tr>
                     </thead>
                     <tbody class="divide-y border-slate-100">
                         ${all.map(t => `
                         <tr class="${t.completed ? 'opacity-40 bg-slate-50' : 'hover:bg-slate-50'} transition">
-                            <td class="p-3 text-center">
-                                <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.pId}', '${t.id}')" class="w-4 h-4 accent-indigo-600">
-                            </td>
+                            <td class="p-3 text-center"><input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.pId}', '${t.id}')" class="w-4 h-4 accent-indigo-600"></td>
                             <td class="p-3 font-black text-slate-700">${t.dueDate}</td>
                             <td class="p-3">
                                 <div class="text-[10px] opacity-60 font-bold flex items-center gap-1">${t.pName} ${window.getFormatBadge(t.pFormat)}</div>
