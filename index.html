@@ -38,10 +38,9 @@
             </div>
         </header>
 
-        <!-- エラーメッセージ表示用 -->
         <div id="error-display" class="hidden mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold whitespace-pre-wrap"></div>
 
-        <!-- プロジェクト追加エリア -->
+        <!-- 学会追加フォーム -->
         <div class="bg-white border border-slate-200 p-6 rounded-2xl mb-8 shadow-sm">
             <h2 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
                 <span class="text-indigo-600">➕</span> 新しい学会の予定を追加
@@ -49,41 +48,39 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">学会・大会名 <span class="text-red-500">*</span></label>
-                    <input type="text" id="simName" placeholder="例: 日本語教育学会 2026春季" class="w-full p-2.5 rounded border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                    <input type="text" id="simName" placeholder="例: 日本語教育学会 2026春季" class="w-full p-2.5 rounded border border-slate-300 text-sm focus:outline-none focus:border-indigo-500">
                 </div>
                 <div class="lg:col-span-2">
                     <label class="block text-xs font-bold text-slate-500 mb-1">発表タイトル</label>
-                    <input type="text" id="simTitle" placeholder="例: 〇〇に関する考察" class="w-full p-2.5 rounded border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                    <input type="text" id="simTitle" placeholder="例: 〇〇に関する考察" class="w-full p-2.5 rounded border border-slate-300 text-sm focus:outline-none focus:border-indigo-500">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">公式サイトURL</label>
-                    <input type="url" id="simUrl" placeholder="https://..." class="w-full p-2.5 rounded border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                    <input type="url" id="simUrl" placeholder="https://..." class="w-full p-2.5 rounded border border-slate-300 text-sm focus:outline-none focus:border-indigo-500">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">開催地</label>
-                    <input type="text" id="simLocation" placeholder="オンライン, 東京など" class="w-full p-2.5 rounded border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                    <input type="text" id="simLocation" placeholder="オンライン, 東京など" class="w-full p-2.5 rounded border border-slate-300 text-sm focus:outline-none focus:border-indigo-500">
                 </div>
                 <div class="flex gap-2">
                     <div class="w-1/2">
                         <label class="block text-xs font-bold text-slate-500 mb-1">開始日 <span class="text-red-500">*</span></label>
-                        <input type="date" id="simStartDate" class="w-full p-2.5 rounded border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                        <input type="date" id="simStartDate" class="w-full p-2.5 rounded border border-slate-300 text-sm focus:outline-none">
                     </div>
                     <div class="w-1/2">
                         <label class="block text-xs font-bold text-slate-500 mb-1">終了日</label>
-                        <input type="date" id="simEndDate" class="w-full p-2.5 rounded border border-slate-300 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                        <input type="date" id="simEndDate" class="w-full p-2.5 rounded border border-slate-300 text-sm focus:outline-none">
                     </div>
                 </div>
             </div>
             <div class="flex justify-end mt-2">
-                <button onclick="importProject()" class="w-full md:w-auto bg-slate-900 text-white font-bold px-8 py-2.5 rounded shadow hover:bg-slate-800 transition whitespace-nowrap">
+                <button onclick="importProject()" class="w-full md:w-auto bg-slate-900 text-white font-bold px-8 py-2.5 rounded shadow hover:bg-slate-800 transition">
                     スケジュール作成
                 </button>
             </div>
         </div>
 
-        <!-- メイン画面 -->
         <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
-            <!-- タブ -->
             <div class="flex border-b border-slate-200 bg-slate-50">
                 <button onclick="switchTab('timeline')" id="tab-timeline" class="flex-1 py-4 text-center tab-active hover:bg-slate-100 transition text-sm">
                     ⏱️ 全タスク 総合タイムライン
@@ -93,22 +90,21 @@
                 </button>
             </div>
 
-            <!-- コンテンツ領域 -->
             <div id="content-area" class="p-6 bg-slate-50 min-h-[500px]">
                 <div class="text-center py-20 text-slate-400 font-bold">データを読み込み中...</div>
             </div>
         </div>
+        <div class="mt-4 text-center text-slate-400 text-[10px]">
+            ※チェックを入れた（完了した）タスクは、翌日になると自動的にリストから消去されます。
+        </div>
     </div>
 
-    <!-- Firebase SDK モジュール読み込み -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ==========================================
-        // ▼▼▼ Firebase設定（ここに取得した設定を貼り付けます） ▼▼▼
-        // ==========================================
+        // Firebase設定
         const myFirebaseConfig = {
             apiKey: "AIzaSyC7mMddmukCPXkPX7Z2MD5fTcCFmUXnKGw",
             authDomain: "gakkai-task-manager.firebaseapp.com",
@@ -117,9 +113,7 @@
             messagingSenderId: "841054331141",
             appId: "1:841054331141:web:c9c72af9178b919414976c"
         };
-        // ==========================================
 
-        // --- データ構造と状態 ---
         window.projects = [];
         window.currentTab = 'timeline';
 
@@ -136,19 +130,8 @@
             { type: 'poster_order', name: 'ポスターの発注', offsetDays: -14 }
         ];
 
-        const badgeColors = ['bg-red-100 text-red-800 border-red-200', 'bg-blue-100 text-blue-800 border-blue-200', 'bg-green-100 text-green-800 border-green-200', 'bg-amber-100 text-amber-800 border-amber-200', 'bg-purple-100 text-purple-800 border-purple-200', 'bg-pink-100 text-pink-800 border-pink-200', 'bg-cyan-100 text-cyan-800 border-cyan-200'];
-        
-        window.getProjectColor = function(projectId) {
-            let hash = 0;
-            for (let i = 0; i < projectId.length; i++) hash = projectId.charCodeAt(i) + ((hash << 5) - hash);
-            return badgeColors[Math.abs(hash) % badgeColors.length];
-        }
-
-        // --- クラウド保存 (Firebase) セットアップ ---
         let app, auth, db, provider;
         let currentUser = null;
-        
-        const hasUserConfig = Object.keys(myFirebaseConfig).length > 0;
         const APP_ID = 'gakkai_app'; 
 
         const showError = (msg) => {
@@ -156,117 +139,103 @@
             if (el) {
                 el.textContent = msg;
                 el.classList.remove('hidden');
-                setTimeout(() => el.classList.add('hidden'), 10000); // 10秒後に消す
+                setTimeout(() => el.classList.add('hidden'), 10000);
             }
         };
 
-        if (hasUserConfig) {
-            try {
-                app = initializeApp(myFirebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                provider = new GoogleAuthProvider();
+        try {
+            app = initializeApp(myFirebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            provider = new GoogleAuthProvider();
 
-                const loginBtn = document.getElementById('login-btn');
-                const logoutBtn = document.getElementById('logout-btn');
-                const userInfo = document.getElementById('user-info');
-                const syncStatus = document.getElementById('sync-status');
+            const loginBtn = document.getElementById('login-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const userInfo = document.getElementById('user-info');
+            const syncStatus = document.getElementById('sync-status');
 
-                loginBtn.onclick = async () => {
-                    try {
-                        await signInWithPopup(auth, provider);
-                    } catch (error) {
-                        console.error("ログインエラー:", error);
-                        if (error.code === 'auth/unauthorized-domain') {
-                            showError("エラー: このドメインはFirebaseで許可されていません。\nFirebaseコンソールの Authentication > Settings > Authorized domains に現在のURLのドメインを追加してください。");
-                        } else if (error.code === 'auth/popup-blocked') {
-                            showError("エラー: ブラウザによってポップアップがブロックされました。設定から許可してください。");
-                        } else {
-                            showError("ログインに失敗しました: " + error.message);
-                        }
-                    }
-                };
+            loginBtn.onclick = async () => {
+                try {
+                    await signInWithPopup(auth, provider);
+                } catch (error) {
+                    showError("ログイン失敗: " + error.message);
+                }
+            };
 
-                logoutBtn.onclick = async () => {
-                    try {
-                        await signOut(auth);
-                        window.projects = []; 
-                        window.render();
-                    } catch (error) {
-                        console.error("ログアウトエラー:", error);
-                    }
-                };
+            logoutBtn.onclick = async () => {
+                await signOut(auth);
+                window.projects = []; 
+                window.render();
+            };
 
-                onAuthStateChanged(auth, (user) => {
-                    currentUser = user;
-                    if (user) {
-                        userInfo.innerHTML = `👤 <span class="font-bold text-indigo-700">${user.displayName || 'ユーザー'}</span> さん`;
-                        loginBtn.classList.add('hidden');
-                        logoutBtn.classList.remove('hidden');
-                        syncStatus.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-bold rounded-full border border-emerald-200 shadow-sm"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> デバイス同期オン</span>`;
-                        setupFirestoreListener();
-                    } else {
-                        userInfo.innerHTML = `同期機能は未ログインです`;
-                        loginBtn.classList.remove('hidden');
-                        logoutBtn.classList.add('hidden');
-                        syncStatus.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 text-[11px] font-bold rounded-full border border-amber-200 shadow-sm"><span class="w-2 h-2 rounded-full bg-amber-500"></span> ログイン待機中</span>`;
-                        window.projects = [];
-                        window.render();
-                    }
-                });
-            } catch (e) {
-                console.error("Firebase初期化エラー:", e);
-                fallbackInit();
-            }
-        } else {
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                if (user) {
+                    userInfo.innerHTML = `👤 <span class="font-bold text-indigo-700">${user.displayName}</span> さん`;
+                    loginBtn.classList.add('hidden');
+                    logoutBtn.classList.remove('hidden');
+                    syncStatus.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-bold rounded-full border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> デバイス同期中</span>`;
+                    setupFirestoreListener();
+                } else {
+                    userInfo.innerHTML = `未ログイン`;
+                    loginBtn.classList.remove('hidden');
+                    logoutBtn.classList.add('hidden');
+                    syncStatus.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 text-[11px] font-bold rounded-full border border-amber-200"><span class="w-2 h-2 rounded-full bg-amber-500"></span> 同期オフ</span>`;
+                    fallbackInit();
+                }
+            });
+        } catch (e) {
             fallbackInit();
         }
 
         function fallbackInit() {
-            window.addEventListener('DOMContentLoaded', () => {
-                const savedData = localStorage.getItem('gakkai_projects_v1');
-                if (savedData) {
-                    try {
-                        window.projects = JSON.parse(savedData);
-                    } catch(e) {
-                        window.projects = [];
-                    }
+            const savedData = localStorage.getItem('gakkai_projects_v1');
+            if (savedData) {
+                let localProjects = JSON.parse(savedData);
+                if (autoCleanupOldTasks(localProjects)) {
+                    localStorage.setItem('gakkai_projects_v1', JSON.stringify(localProjects));
                 }
-                const userInfo = document.getElementById('user-info');
-                if(userInfo) userInfo.innerHTML = `ローカル保存モード`;
-                
-                const syncStatus = document.getElementById('sync-status');
-                if(syncStatus) syncStatus.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 text-slate-500 text-[11px] font-bold rounded-full border border-slate-200 shadow-sm"><span class="w-2 h-2 rounded-full bg-slate-400"></span> 同期オフ (ブラウザ保存)</span>`;
-                
-                window.render();
-                window.switchTab('timeline');
+                window.projects = localProjects;
+            }
+            window.render();
+        }
+
+        // 自動消去ロジック：完了済みで「完了日」が昨日以前なら削除
+        function autoCleanupOldTasks(projectsList) {
+            const todayStr = new Date().toISOString().split('T')[0];
+            let hasChanged = false;
+            projectsList.forEach(proj => {
+                const initialLen = proj.tasks.length;
+                proj.tasks = proj.tasks.filter(t => {
+                    if (t.completed && t.completedAt && t.completedAt < todayStr) {
+                        hasChanged = true;
+                        return false;
+                    }
+                    return true;
+                });
             });
+            return hasChanged;
         }
 
         function setupFirestoreListener() {
             if (!currentUser) return;
             const projectsRef = collection(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'projects');
             onSnapshot(projectsRef, (snapshot) => {
-                window.projects = [];
-                snapshot.forEach(doc => {
-                    window.projects.push({ id: doc.id, ...doc.data() });
-                });
+                let syncedProjects = [];
+                snapshot.forEach(doc => syncedProjects.push({ id: doc.id, ...doc.data() }));
+                
+                if (autoCleanupOldTasks(syncedProjects)) {
+                    syncedProjects.forEach(async (p) => await saveProject(p));
+                }
+                window.projects = syncedProjects;
                 window.render();
-            }, (error) => {
-                console.error("データ同期エラー:", error);
-                showError("同期エラー: データベースのアクセス権限を確認してください。");
             });
         }
 
         async function saveProject(proj) {
-            if (hasUserConfig && currentUser) {
-                try {
-                    const docRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'projects', proj.id);
-                    await setDoc(docRef, proj);
-                } catch (e) {
-                    console.error("保存エラー:", e);
-                    showError("保存エラー: " + e.message);
-                }
+            if (currentUser) {
+                const docRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'projects', proj.id);
+                await setDoc(docRef, proj);
             } else {
                 const idx = window.projects.findIndex(p => p.id === proj.id);
                 if (idx >= 0) window.projects[idx] = proj;
@@ -277,14 +246,9 @@
         }
 
         async function removeProject(projectId) {
-            if (hasUserConfig && currentUser) {
-                try {
-                    const docRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'projects', projectId);
-                    await deleteDoc(docRef);
-                } catch (e) {
-                    console.error("削除エラー:", e);
-                    showError("削除エラー: " + e.message);
-                }
+            if (currentUser) {
+                const docRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'projects', projectId);
+                await deleteDoc(docRef);
             } else {
                 window.projects = window.projects.filter(p => p.id !== projectId);
                 localStorage.setItem('gakkai_projects_v1', JSON.stringify(window.projects));
@@ -292,27 +256,12 @@
             }
         }
 
-        // --- アプリケーションロジック ---
-
         window.importProject = async function() {
-            const nameInput = document.getElementById('simName');
-            const titleInput = document.getElementById('simTitle');
-            const urlInput = document.getElementById('simUrl');
-            const locationInput = document.getElementById('simLocation');
-            const startDateInput = document.getElementById('simStartDate');
-            const endDateInput = document.getElementById('simEndDate');
-            
-            const name = nameInput.value;
-            const titleStr = titleInput.value;
-            const urlStr = urlInput.value;
-            const locationStr = locationInput.value;
-            const startDateStr = startDateInput.value;
-            const endDateStr = endDateInput.value;
-            
-            if (!name || !startDateStr) return alert('学会名と開始日を入力してください。');
+            const name = document.getElementById('simName').value;
+            const startDate = document.getElementById('simStartDate').value;
+            if (!name || !startDate) return alert('学会名と開始日は入力必須です。');
 
-            const confDate = new Date(startDateStr);
-            
+            const confDate = new Date(startDate);
             const tasks = TASK_TEMPLATES.map(template => {
                 const dueDate = new Date(confDate);
                 dueDate.setDate(dueDate.getDate() + template.offsetDays);
@@ -327,49 +276,29 @@
 
             const newProject = {
                 id: 'proj_' + Math.random().toString(36).substr(2, 9),
-                name: name,
-                presentationTitle: titleStr || '',
-                url: urlStr || '',
-                location: locationStr || '未設定',
-                startDate: startDateStr,
-                endDate: endDateStr || startDateStr,
-                tasks: tasks,
+                name,
+                presentationTitle: document.getElementById('simTitle').value || '',
+                url: document.getElementById('simUrl').value || '',
+                location: document.getElementById('simLocation').value || '未設定',
+                startDate,
+                endDate: document.getElementById('simEndDate').value || startDate,
+                tasks,
                 isExpanded: true
             };
-
-            nameInput.value = '';
-            titleInput.value = '';
-            urlInput.value = '';
-            locationInput.value = '';
-            startDateInput.value = '';
-            endDateInput.value = '';
             
+            ['simName', 'simTitle', 'simUrl', 'simLocation', 'simStartDate', 'simEndDate'].forEach(id => document.getElementById(id).value = '');
             await saveProject(newProject);
         }
 
         window.addCustomTask = async function(projectId) {
-            const nameInput = document.getElementById(`customTaskName_${projectId}`);
-            const dateInput = document.getElementById(`customTaskDate_${projectId}`);
-            
-            if (!nameInput.value || !dateInput.value) {
-                alert('タスク名と期日を入力してください。');
-                return;
-            }
-
+            const name = document.getElementById(`customTaskName_${projectId}`).value;
+            const date = document.getElementById(`customTaskDate_${projectId}`).value;
+            if (!name || !date) return;
             const proj = window.projects.find(p => p.id === projectId);
             if (proj) {
-                proj.tasks.push({
-                    id: 'task_' + Math.random().toString(36).substr(2, 9),
-                    name: nameInput.value,
-                    dueDate: dateInput.value,
-                    completed: false,
-                    isCustom: true
-                });
+                proj.tasks.push({ id: 'task_' + Math.random().toString(36).substr(2, 9), name, dueDate: date, completed: false, isCustom: true });
                 proj.tasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
                 await saveProject(proj);
-                
-                nameInput.value = '';
-                dateInput.value = '';
             }
         }
 
@@ -379,6 +308,7 @@
                 const task = proj.tasks.find(t => t.id === taskId);
                 if (task) {
                     task.completed = !task.completed;
+                    task.completedAt = task.completed ? new Date().toISOString().split('T')[0] : null;
                     await saveProject(proj);
                 }
             }
@@ -404,313 +334,114 @@
             }
         }
 
-        window.toggleProjectExpand = async function(projectId) {
-            const proj = window.projects.find(p => p.id === projectId);
-            if (proj) {
-                proj.isExpanded = !proj.isExpanded;
-                await saveProject(proj);
-            }
+        window.toggleProjectExpand = async function(id) {
+            const p = window.projects.find(x => x.id === id);
+            if(p){ p.isExpanded = !p.isExpanded; await saveProject(p); }
         }
 
-        window.deleteProject = async function(projectId) {
-            if(confirm("この学会プロジェクトと、紐づくすべてのタスクを削除しますか？")) {
-                await removeProject(projectId);
-            }
+        window.deleteProject = async function(id) {
+            if(confirm("この学会を削除しますか？")) await removeProject(id);
         }
 
-        window.startEdit = function(projectId) {
-            const proj = window.projects.find(p => p.id === projectId);
-            if (proj) {
-                proj.isEditing = true;
-                window.render();
+        window.startEdit = (id) => { const p = window.projects.find(x => x.id === id); if(p){ p.isEditing = true; window.render(); }};
+        window.cancelEdit = (id) => { const p = window.projects.find(x => x.id === id); if(p){ p.isEditing = false; window.render(); }};
+        window.saveEdit = async (id) => {
+            const p = window.projects.find(x => x.id === id);
+            if(p){
+                p.name = document.getElementById(`editName_${id}`).value;
+                p.presentationTitle = document.getElementById(`editTitle_${id}`).value;
+                p.url = document.getElementById(`editUrl_${id}`).value;
+                p.location = document.getElementById(`editLocation_${id}`).value;
+                p.startDate = document.getElementById(`editStartDate_${id}`).value;
+                p.endDate = document.getElementById(`editEndDate_${id}`).value || p.startDate;
+                p.isEditing = false;
+                await saveProject(p);
             }
-        }
+        };
 
-        window.cancelEdit = function(projectId) {
-            const proj = window.projects.find(p => p.id === projectId);
-            if (proj) {
-                proj.isEditing = false;
-                window.render();
-            }
-        }
-
-        window.saveEdit = async function(projectId) {
-            const proj = window.projects.find(p => p.id === projectId);
-            if (proj) {
-                const name = document.getElementById(`editName_${projectId}`).value;
-                const title = document.getElementById(`editTitle_${projectId}`).value;
-                const url = document.getElementById(`editUrl_${projectId}`).value;
-                const loc = document.getElementById(`editLocation_${projectId}`).value;
-                const start = document.getElementById(`editStartDate_${projectId}`).value;
-                const end = document.getElementById(`editEndDate_${projectId}`).value;
-                
-                if (!name || !start) return alert('学会名と開始日は入力必須です。');
-                
-                proj.name = name;
-                proj.presentationTitle = title;
-                proj.url = url;
-                proj.location = loc;
-                proj.startDate = start;
-                proj.endDate = end || start;
-                proj.isEditing = false;
-                
-                await saveProject(proj);
-            }
-        }
-
-        window.switchTab = function(tabId) {
+        window.switchTab = (tabId) => {
             window.currentTab = tabId;
             document.getElementById('tab-timeline').className = `flex-1 py-4 text-center ${tabId === 'timeline' ? 'tab-active' : 'tab-inactive'} hover:bg-slate-100 transition text-sm`;
             document.getElementById('tab-project').className = `flex-1 py-4 text-center ${tabId === 'project' ? 'tab-active' : 'tab-inactive'} hover:bg-slate-100 transition text-sm`;
             window.render();
         }
 
-        window.getGoogleCalendarUrl = function(taskName, dateStr, confName, presentationTitle) {
-            if (!dateStr) return '#';
-            const d = new Date(dateStr);
-            const d2 = new Date(d);
-            d2.setDate(d2.getDate() + 1);
-            
-            const formatDate = (dt) => {
-                const y = dt.getFullYear();
-                const m = String(dt.getMonth() + 1).padStart(2, '0');
-                const day = String(dt.getDate()).padStart(2, '0');
-                return `${y}${m}${day}`;
-            };
-
-            const text = encodeURIComponent(`[${confName}] ${taskName}`);
-            let detailsText = `学会タスク管理ツールからの自動登録です。`;
-            if (presentationTitle) {
-                detailsText += `\n発表タイトル: ${presentationTitle}`;
-            }
-            const details = encodeURIComponent(detailsText);
-            return `https://www.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${formatDate(d)}/${formatDate(d2)}&details=${details}`;
+        window.getGoogleCalendarUrl = (tName, dStr, cName, pTitle) => {
+            if (!dStr) return '#';
+            const d = new Date(dStr); const d2 = new Date(d); d2.setDate(d2.getDate() + 1);
+            const f = (dt) => `${dt.getFullYear()}${String(dt.getMonth() + 1).padStart(2, '0')}${String(dt.getDate()).padStart(2, '0')}`;
+            const details = encodeURIComponent(`学会タスク管理。${pTitle ? '\n発表: ' + pTitle : ''}`);
+            return `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`[${cName}] ${tName}`)}&dates=${f(d)}/${f(d2)}&details=${details}`;
         }
 
-        // --- UI描画 ---
-        window.render = function() {
-            window.updateStats();
+        window.render = () => {
             const container = document.getElementById('content-area');
-            
-            if (window.projects.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-20">
-                        <div class="text-4xl mb-4">📭</div>
-                        <h3 class="text-lg font-bold text-slate-600 mb-2">プロジェクトがありません</h3>
-                        <p class="text-slate-400 text-sm">上のフォームから学会の予定を追加して、タスク管理を始めましょう。</p>
-                    </div>`;
-                return;
-            }
-
-            if (window.currentTab === 'project') window.renderProjectView(container);
-            else window.renderTimelineView(container);
-        }
-
-        window.updateStats = function() {
             const statsEl = document.getElementById('overview-stats');
             if (window.projects.length === 0) {
-                statsEl.innerHTML = '';
+                container.innerHTML = `<div class="text-center py-20 text-slate-400">プロジェクトがありません</div>`;
+                statsEl.classList.add('hidden');
                 return;
             }
-            let totalTasks = 0;
-            let completedTasks = 0;
-            window.projects.forEach(p => {
-                totalTasks += p.tasks.length;
-                completedTasks += p.tasks.filter(t => t.completed).length;
-            });
-            statsEl.innerHTML = `並行プロジェクト: <span class="text-indigo-600">${window.projects.length}</span> 件 <span class="mx-2">|</span> 全タスク達成率: <span class="text-indigo-600">${Math.round((completedTasks/totalTasks)*100)||0}%</span>`;
+            statsEl.classList.remove('hidden');
+            let t = 0, d = 0; window.projects.forEach(p => { t += p.tasks.length; d += p.tasks.filter(x => x.completed).length; });
+            statsEl.innerHTML = `プロジェクト: ${window.projects.length} 件 | 達成率: ${Math.round((d/t)*100)||0}%`;
+            
+            if (window.currentTab === 'project') renderProjectView(container);
+            else renderTimelineView(container);
         }
 
-        window.renderProjectView = function(container) {
+        const renderProjectView = (container) => {
             let html = '<div class="space-y-4">';
-            
             window.projects.forEach(proj => {
-                const completedCount = proj.tasks.filter(t => t.completed).length;
-                const progress = Math.round((completedCount / proj.tasks.length) * 100) || 0;
+                const done = proj.tasks.filter(t => t.completed).length;
+                const progress = Math.round((done / proj.tasks.length) * 100) || 0;
                 const badgeColor = window.getProjectColor(proj.id);
-                
-                const startDate = proj.startDate || proj.conferenceDate;
-                const endDate = proj.endDate || proj.conferenceDate;
-                const dateDisplay = startDate === endDate ? startDate : `${startDate} 〜 ${endDate}`;
-
                 html += `
-                <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
                     ${proj.isEditing ? `
-                    <div class="p-4 bg-indigo-50 border-b border-slate-200">
-                        <h3 class="text-sm font-bold text-indigo-800 mb-3 flex items-center gap-2">✏️ プロジェクト情報の編集</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 mb-1">学会・大会名 <span class="text-red-500">*</span></label>
-                                <input type="text" id="editName_${proj.id}" value="${(proj.name || '').replace(/"/g, '&quot;')}" class="w-full p-2 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 outline-none">
-                            </div>
-                            <div class="lg:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-500 mb-1">発表タイトル</label>
-                                <input type="text" id="editTitle_${proj.id}" value="${(proj.presentationTitle || '').replace(/"/g, '&quot;')}" class="w-full p-2 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 mb-1">公式サイトURL</label>
-                                <input type="url" id="editUrl_${proj.id}" value="${(proj.url || '').replace(/"/g, '&quot;')}" class="w-full p-2 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 mb-1">開催地</label>
-                                <input type="text" id="editLocation_${proj.id}" value="${(proj.location || '').replace(/"/g, '&quot;')}" class="w-full p-2 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 outline-none">
-                            </div>
-                            <div class="flex gap-2">
-                                <div class="w-1/2">
-                                    <label class="block text-[10px] font-bold text-slate-500 mb-1">開始日 <span class="text-red-500">*</span></label>
-                                    <input type="date" id="editStartDate_${proj.id}" value="${proj.startDate || proj.conferenceDate || ''}" class="w-full p-2 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 outline-none">
-                                </div>
-                                <div class="w-1/2">
-                                    <label class="block text-[10px] font-bold text-slate-500 mb-1">終了日</label>
-                                    <input type="date" id="editEndDate_${proj.id}" value="${proj.endDate || proj.conferenceDate || ''}" class="w-full p-2 border border-slate-300 rounded text-xs focus:ring-1 focus:ring-indigo-500 outline-none">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="text-[10px] text-slate-500 mb-3">※日程を変更しても、既に設定されている各タスクの期日は自動変更されません。</div>
-                        <div class="flex justify-end gap-2">
-                            <button onclick="cancelEdit('${proj.id}')" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded hover:bg-slate-50 transition">キャンセル</button>
-                            <button onclick="saveEdit('${proj.id}')" class="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded shadow hover:bg-indigo-700 transition">保存</button>
-                        </div>
-                    </div>
-                    ` : `
-                    <div class="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center cursor-pointer hover:bg-slate-50 transition" onclick="toggleProjectExpand('${proj.id}')">
+                    <div class="p-4 bg-indigo-50 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                        <div>学会名: <input id="editName_${proj.id}" value="${proj.name}" class="w-full border p-1 rounded"></div>
+                        <div class="md:col-span-2">発表: <input id="editTitle_${proj.id}" value="${proj.presentationTitle}" class="w-full border p-1 rounded"></div>
+                        <div>開始: <input type="date" id="editStartDate_${proj.id}" value="${proj.startDate}" class="w-full border p-1 rounded"></div>
+                        <div>終了: <input type="date" id="editEndDate_${proj.id}" value="${proj.endDate}" class="w-full border p-1 rounded"></div>
+                        <div class="flex items-end gap-2"><button onclick="saveEdit('${proj.id}')" class="bg-indigo-600 text-white px-3 py-1 rounded">保存</button><button onclick="cancelEdit('${proj.id}')" class="border px-3 py-1 rounded">キャンセル</button></div>
+                    </div>` : `
+                    <div class="p-4 flex flex-col md:flex-row justify-between items-center cursor-pointer" onclick="toggleProjectExpand('${proj.id}')">
                         <div class="flex items-center gap-3">
-                            <div class="text-xl text-slate-400">${proj.isExpanded ? '🔽' : '▶️'}</div>
+                            <span class="text-slate-400">${proj.isExpanded ? '🔽' : '▶️'}</span>
                             <div>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${badgeColor}">${proj.name.substring(0, 4)}...</span>
-                                    <h3 class="text-base font-black text-slate-800">${proj.name}</h3>
-                                    ${proj.url ? `<a href="${proj.url}" target="_blank" class="text-[10px] bg-slate-100 text-slate-500 hover:text-indigo-600 px-2 py-0.5 rounded border border-slate-200 transition" onclick="event.stopPropagation()">🔗 サイトを開く</a>` : ''}
-                                </div>
-                                <div class="text-xs text-slate-500 mt-1 font-medium">
-                                    日程: ${dateDisplay} <span class="mx-1">|</span> 開催地: ${proj.location} 
-                                    ${proj.presentationTitle ? `<span class="mx-1">|</span> 発表: <span class="font-bold text-slate-700">${proj.presentationTitle}</span>` : ''}
-                                    <span class="mx-1">|</span> タスク: ${completedCount}/${proj.tasks.length}完了
-                                </div>
+                                <h3 class="font-black text-slate-800">${proj.name}</h3>
+                                <div class="text-[10px] text-slate-500">${proj.startDate}〜${proj.endDate} | ${proj.presentationTitle || '発表未設定'}</div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-4 mt-4 sm:mt-0 w-full sm:w-auto">
-                            <div class="flex-1 sm:flex-none w-32 bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                                <div class="bg-indigo-600 h-2.5 rounded-full" style="width: ${progress}%"></div>
-                            </div>
-                            <span class="text-xs font-bold text-slate-600 w-8 text-right">${progress}%</span>
-                            <button onclick="event.stopPropagation(); startEdit('${proj.id}')" class="text-slate-300 hover:text-indigo-600 transition px-2" title="プロジェクト編集">✏️</button>
-                            <button onclick="event.stopPropagation(); deleteProject('${proj.id}')" class="text-slate-300 hover:text-red-600 transition px-2" title="プロジェクト削除">🗑️</button>
+                        <div class="flex items-center gap-4 mt-2 md:mt-0">
+                            <span class="text-xs font-bold">${progress}%</span>
+                            <button onclick="event.stopPropagation(); startEdit('${proj.id}')">✏️</button>
+                            <button onclick="event.stopPropagation(); deleteProject('${proj.id}')">🗑️</button>
                         </div>
-                    </div>
-                    `}
-                    
-                    <div class="${proj.isExpanded && !proj.isEditing ? 'block' : 'hidden'} border-t border-slate-100 bg-white">
-                        <table class="w-full text-left text-sm">
-                            <tbody class="divide-y divide-slate-100">
-                                ${proj.tasks.map(task => {
-                                    const taskDate = new Date(task.dueDate);
-                                    const isPast = !task.completed && taskDate < new Date(new Date().setHours(0,0,0,0));
-                                    return `
-                                    <tr class="${task.completed ? 'bg-slate-50 opacity-60' : ''} hover:bg-slate-50 group">
-                                        <td class="p-3 w-12 text-center align-middle">
-                                            <input type="checkbox" class="w-4 h-4 accent-indigo-600 cursor-pointer" 
-                                                ${task.completed ? 'checked' : ''} 
-                                                onchange="toggleTask('${proj.id}', '${task.id}')">
-                                        </td>
-                                        <td class="p-3 font-medium ${task.completed ? 'line-through text-slate-400' : 'text-slate-700'}">
-                                            ${task.name}
-                                            ${task.isCustom ? '<span class="ml-2 text-[9px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded">追加</span>' : ''}
-                                        </td>
-                                        <td class="p-3 w-36">
-                                            <input type="date" value="${task.dueDate}" 
-                                                class="border border-slate-200 rounded px-2 py-1 text-xs bg-transparent focus:bg-white focus:ring-1 focus:ring-indigo-500 outline-none w-full ${isPast ? 'text-red-600 border-red-200 font-bold' : ''}"
-                                                onchange="updateDate('${proj.id}', '${task.id}', this.value)">
-                                            ${isPast ? '<div class="text-[9px] text-red-500 font-bold mt-1">⚠️ 期限切れ</div>' : ''}
-                                        </td>
-                                        <td class="p-3 w-28 text-right space-x-2">
-                                            <a href="${window.getGoogleCalendarUrl(task.name, task.dueDate, proj.name, proj.presentationTitle)}" target="_blank" title="Googleカレンダーに追加"
-                                               class="inline-block text-slate-400 hover:text-blue-600 p-1">📅</a>
-                                            <button onclick="deleteTask('${proj.id}', '${task.id}')" class="text-red-400 hover:text-red-600 p-1" title="削除">🗑️</button>
-                                        </td>
-                                    </tr>
-                                `}).join('')}
+                    </div>`}
+                    <div class="${proj.isExpanded && !proj.isEditing ? 'block' : 'hidden'} border-t bg-slate-50">
+                        <table class="w-full text-sm">
+                            <tbody>
+                                ${proj.tasks.map(t => `<tr class="${t.completed ? 'opacity-40' : ''} border-b border-slate-100">
+                                    <td class="p-3 w-10 text-center"><input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${proj.id}', '${t.id}')"></td>
+                                    <td class="p-3 ${t.completed ? 'line-through' : ''}">${t.name}</td>
+                                    <td class="p-3 w-32"><input type="date" value="${t.dueDate}" onchange="updateDate('${proj.id}', '${t.id}', this.value)" class="text-xs border rounded p-1 w-full bg-transparent"></td>
+                                    <td class="p-3 w-16 text-right"><a href="${window.getGoogleCalendarUrl(t.name, t.dueDate, proj.name, proj.presentationTitle)}" target="_blank">📅</a></td>
+                                </tr>`).join('')}
                             </tbody>
                         </table>
-                        
-                        <div class="p-3 bg-slate-50 border-t border-slate-100 flex items-center gap-2">
-                            <span class="text-slate-400 text-sm ml-2">↳</span>
-                            <input type="text" id="customTaskName_${proj.id}" placeholder="独自のタスク名を入力..." class="flex-1 text-xs p-1.5 border border-slate-200 rounded focus:outline-none focus:border-indigo-500">
-                            <input type="date" id="customTaskDate_${proj.id}" class="w-32 text-xs p-1.5 border border-slate-200 rounded focus:outline-none focus:border-indigo-500">
-                            <button onclick="addCustomTask('${proj.id}')" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 text-xs font-bold px-3 py-1.5 rounded transition">追加</button>
-                        </div>
+                        <div class="p-3 flex gap-2"><input id="customTaskName_${proj.id}" placeholder="タスク追加..." class="flex-1 text-xs p-1 border rounded"><input type="date" id="customTaskDate_${proj.id}" class="text-xs border rounded"><button onclick="addCustomTask('${proj.id}')" class="text-xs bg-indigo-600 text-white px-2 rounded">追加</button></div>
                     </div>
                 </div>`;
             });
-            html += '</div>';
-            container.innerHTML = html;
+            container.innerHTML = html + '</div>';
         }
 
-        window.renderTimelineView = function(container) {
-            let allTasks = [];
-            window.projects.forEach(proj => {
-                proj.tasks.forEach(task => {
-                    allTasks.push({ ...task, projectId: proj.id, projectName: proj.name, projectUrl: proj.url, presentationTitle: proj.presentationTitle });
-                });
-            });
-
-            allTasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-
-            const today = new Date();
-            today.setHours(0,0,0,0);
-
-            let html = `
-            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-900 text-slate-300 text-xs">
-                        <tr>
-                            <th class="p-3 w-12 text-center">完了</th>
-                            <th class="p-3 w-28 font-bold">期日 ▲</th>
-                            <th class="p-3">学会 / タスク名</th>
-                            <th class="p-3 w-24 text-center">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        ${allTasks.map(task => {
-                            const taskDate = new Date(task.dueDate);
-                            const isPast = !task.completed && taskDate < today;
-                            const badgeColor = window.getProjectColor(task.projectId);
-                            
-                            return `
-                            <tr class="${task.completed ? 'bg-slate-50 opacity-50' : 'hover:bg-slate-50'} transition">
-                                <td class="p-3 text-center align-middle">
-                                    <input type="checkbox" class="w-4 h-4 accent-indigo-600 cursor-pointer" 
-                                        ${task.completed ? 'checked' : ''} 
-                                        onchange="toggleTask('${task.projectId}', '${task.id}')">
-                                </td>
-                                <td class="p-3 w-36">
-                                    <input type="date" value="${task.dueDate}" 
-                                        class="border border-slate-200 rounded px-2 py-1 text-xs bg-transparent focus:bg-white focus:ring-1 focus:ring-indigo-500 outline-none w-full font-bold ${isPast ? 'text-red-600 border-red-200' : 'text-slate-700'}"
-                                        onchange="updateDate('${task.projectId}', '${task.id}', this.value)">
-                                    ${isPast ? '<div class="text-[9px] text-red-500 font-bold mt-1">⚠️ 期限切れ</div>' : ''}
-                                </td>
-                                <td class="p-3">
-                                    <div class="mb-1">
-                                        ${task.projectUrl 
-                                            ? `<a href="${task.projectUrl}" target="_blank" onclick="event.stopPropagation()" class="inline-block text-[10px] font-bold px-2 py-0.5 rounded border hover:opacity-80 transition ${badgeColor}">${task.projectName} 🔗</a>` 
-                                            : `<span class="text-[10px] font-bold px-2 py-0.5 rounded border ${badgeColor}">${task.projectName}</span>`
-                                        }
-                                    </div>
-                                    <div class="font-medium text-sm ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'}">
-                                        ${task.name}
-                                    </div>
-                                </td>
-                                <td class="p-3 text-center space-x-2">
-                                    <a href="${window.getGoogleCalendarUrl(task.name, task.dueDate, task.projectName, task.presentationTitle)}" target="_blank" 
-                                       class="inline-block text-slate-400 hover:text-blue-600 p-1" title="カレンダーに追加">📅</a>
-                                    <button onclick="deleteTask('${task.projectId}', '${task.id}')" class="text-red-400 hover:text-red-600 p-1" title="削除">🗑️</button>
-                                </td>
-                            </tr>
-                        `}).join('')}
-                    </tbody>
-                </table>
-            </div>`;
-            container.innerHTML = html;
+        const renderTimelineView = (container) => {
+            let all = []; window.projects.forEach(p => p.tasks.forEach(t => all.push({...t, pId: p.id, pName: p.name, pTitle: p.presentationTitle})));
+            all.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+            container.innerHTML = `<div class="bg-white border rounded-xl"><table class="w-full text-sm text-left"><thead class="bg-slate-900 text-white text-xs"><tr><th class="p-3 w-10">完了</th><th class="p-3 w-32">期日</th><th class="p-3">学会 / タスク</th><th class="p-3 w-10"></th></tr></thead><tbody>${all.map(t => `<tr class="${t.completed ? 'opacity-40 bg-slate-50' : ''} border-b border-slate-100"><td class="p-3 text-center"><input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.pId}', '${t.id}')"></td><td class="p-3 font-bold">${t.dueDate}</td><td class="p-3"><div class="text-[10px] opacity-60">${t.pName}</div><div class="${t.completed ? 'line-through' : ''}">${t.name}</div></td><td class="p-3"><a href="${window.getGoogleCalendarUrl(t.name, t.dueDate, t.pName, t.pTitle)}" target="_blank">📅</a></td></tr>`).join('')}</tbody></table></div>`;
         }
     </script>
 </body>
