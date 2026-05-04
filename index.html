@@ -113,6 +113,7 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // --- Firebase Configuration ---
         const myFirebaseConfig = {
             apiKey: "AIzaSyC7mMddmukCPXkPX7Z2MD5fTcCFmUXnKGw",
             authDomain: "gakkai-task-manager.firebaseapp.com",
@@ -143,6 +144,7 @@
         let currentUser = null;
         const APP_ID = 'gakkai_app'; 
 
+        // 日本時間(JST)の YYYY-MM-DD を取得
         function getJSTDateStr() {
             return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
         }
@@ -156,6 +158,7 @@
             }
         };
 
+        // --- Firebase Initial Auth ---
         try {
             app = initializeApp(myFirebaseConfig);
             auth = getAuth(app);
@@ -173,7 +176,7 @@
                     userInfo.innerHTML = `👤 <span class="font-bold text-indigo-700">${user.displayName}</span> さん`;
                     loginBtn.classList.add('hidden');
                     logoutBtn.classList.remove('hidden');
-                    syncStatus.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-bold rounded-full border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> デバイス同期中</span>`;
+                    syncStatus.innerHTML = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-bold rounded-full border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> 同期中</span>`;
                     setupFirestoreListener();
                 } else {
                     userInfo.innerHTML = `未ログイン`;
@@ -185,7 +188,7 @@
             });
 
             document.getElementById('login-btn').onclick = async () => {
-                try { await signInWithPopup(auth, provider); } catch (e) { showError("ログイン失敗: " + e.message); }
+                try { await signInWithPopup(auth, provider); } catch (e) { showError("ログイン失敗"); }
             };
             document.getElementById('logout-btn').onclick = async () => {
                 await signOut(auth);
@@ -208,17 +211,24 @@
             window.render();
         }
 
+        // 自動消去ロジック：
+        // 完了済みかつ「完了日が今日より前」のタスクを削除。
+        // ※完了日の記録がないタスクは「古いタスク」とみなして即削除する。
         function autoCleanupOldTasks(projectsList) {
             const todayStr = getJSTDateStr();
             let hasChanged = false;
+
             projectsList.forEach(proj => {
+                const initialLen = proj.tasks.length;
                 proj.tasks = proj.tasks.filter(t => {
                     if (t.completed) {
+                        // 完了日の記録がない＝旧バージョンで完了したもの
+                        // 即座に削除対象にして整理する
                         if (!t.completedAt) {
-                            t.completedAt = todayStr;
                             hasChanged = true;
-                            return true;
+                            return false;
                         }
+                        // 完了日が今日より前（昨日以前）なら削除
                         if (t.completedAt < todayStr) {
                             hasChanged = true;
                             return false;
@@ -236,6 +246,8 @@
             onSnapshot(projectsRef, (snapshot) => {
                 let syncedProjects = [];
                 snapshot.forEach(doc => syncedProjects.push({ id: doc.id, ...doc.data() }));
+                
+                // 自動整理が必要なら保存し直す
                 if (autoCleanupOldTasks(syncedProjects)) {
                     syncedProjects.forEach(async (p) => await saveProject(p));
                 }
@@ -425,13 +437,7 @@
         }
 
         const renderProjectView = (container) => {
-            // 学会開始日でソート（昇順：早いものが上）
-            const sortedProjects = [...window.projects].sort((a, b) => {
-                const dateA = new Date(a.startDate || 0);
-                const dateB = new Date(b.startDate || 0);
-                return dateA - dateB;
-            });
-
+            const sortedProjects = [...window.projects].sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0));
             let html = '<div class="space-y-4">';
             sortedProjects.forEach(proj => {
                 const done = proj.tasks.filter(t => t.completed).length;
