@@ -103,7 +103,7 @@
             </div>
         </div>
         <div class="mt-4 text-center text-slate-400 text-[10px]">
-            ※チェックを入れた（完了した）タスクは、日本時間の翌日になると自動的にリストから消去されます。
+            ※完了したタスクは、翌日（日本時間）になると自動的に整理・消去されます。
         </div>
     </div>
 
@@ -142,7 +142,19 @@
         let currentUser = null;
         const APP_ID = 'gakkai_app'; 
 
-        // 日本時間(JST)の日付をブラウザ環境に依存せず YYYY-MM-DD で確実に取得
+        // 確実な日付比較のための関数（昨日以前ならtrue）
+        function isOldTask(completedAt) {
+            if (!completedAt) return true; // 記録がなければ古いとみなす
+            const match = String(completedAt).match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+            if (!match) return true; 
+            const tDate = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+            const d = new Date();
+            d.setMinutes(d.getMinutes() + d.getTimezoneOffset() + 540); // JSTに変換
+            const todayDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            return tDate.getTime() < todayDate.getTime();
+        }
+
+        // JSTの現在日付文字列を取得
         function getJSTDateStr() {
             const d = new Date();
             d.setMinutes(d.getMinutes() + d.getTimezoneOffset() + 540);
@@ -150,18 +162,6 @@
             const m = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return `${y}-${m}-${day}`;
-        }
-
-        // 日付が昨日以前かどうかを厳密に判定
-        function isBeforeToday(dateStr) {
-            if (!dateStr || typeof dateStr !== 'string') return true;
-            const match = dateStr.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
-            if (!match) return true;
-            const tDate = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
-            const todayStr = getJSTDateStr();
-            const tMatch = todayStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-            const todayDate = new Date(parseInt(tMatch[1]), parseInt(tMatch[2]) - 1, parseInt(tMatch[3]));
-            return tDate.getTime() < todayDate.getTime();
         }
 
         const showError = (msg) => {
@@ -213,73 +213,46 @@
             fallbackInit();
         }
 
-        function fallbackInit() {
-            const savedData = localStorage.getItem('gakkai_projects_v1');
-            if (savedData) {
-                let localProjects = JSON.parse(savedData);
-                if (autoCleanupOldTasks(localProjects)) {
-                    localStorage.setItem('gakkai_projects_v1', JSON.stringify(localProjects));
-                }
-                window.projects = localProjects;
-            }
-            window.render();
-        }
-
-        // 自動消去ロジック：完了済みかつ「完了日が今日より前」のタスクを削除。
-        function autoCleanupOldTasks(projectsList) {
-            let hasChanged = false;
-
+        // メモリ上でタスクをクリーンアップ
+        function cleanupOldTasks(projectsList) {
             projectsList.forEach(proj => {
-                const initialLen = proj.tasks.length;
                 proj.tasks = proj.tasks.filter(t => {
-                    if (t.completed) {
-                        if (isBeforeToday(t.completedAt)) {
-                            hasChanged = true;
-                            return false;
-                        }
+                    // 完了済み かつ 「昨日以前(isOldTask)」なら画面から消す
+                    if (t.completed && isOldTask(t.completedAt)) {
+                        return false;
                     }
                     return true;
                 });
             });
-            return hasChanged;
+            return projectsList;
+        }
+
+        function fallbackInit() {
+            const savedData = localStorage.getItem('gakkai_projects_v1');
+            if (savedData) {
+                let localProjects = JSON.parse(savedData);
+                window.projects = cleanupOldTasks(localProjects);
+                localStorage.setItem('gakkai_projects_v1', JSON.stringify(window.projects));
+            }
+            window.render();
         }
 
         function setupFirestoreListener() {
             if (!currentUser) return;
             const projectsRef = collection(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'projects');
-            onSnapshot(projectsRef, async (snapshot) => {
+            onSnapshot(projectsRef, (snapshot) => {
                 let syncedProjects = [];
                 snapshot.forEach(doc => syncedProjects.push({ id: doc.id, ...doc.data() }));
-                
-                // 自動整理が必要なプロジェクトを特定して保存し直す
-                let projectsToSave = [];
-
-                syncedProjects.forEach(proj => {
-                    const initialLen = proj.tasks.length;
-                    proj.tasks = proj.tasks.filter(t => {
-                        if (t.completed) {
-                            if (isBeforeToday(t.completedAt)) return false;
-                        }
-                        return true;
-                    });
-                    if (proj.tasks.length !== initialLen) {
-                        projectsToSave.push(proj);
-                    }
-                });
-
-                if (projectsToSave.length > 0) {
-                    // 通信の競合を防ぐため、順番に確実に保存（直列処理）
-                    for (const p of projectsToSave) {
-                        await saveProject(p);
-                    }
-                }
-                
-                window.projects = syncedProjects;
+                // 読み込み時に表示から消す（競合を防ぐためここでFirestore自動保存はしない）
+                window.projects = cleanupOldTasks(syncedProjects);
                 window.render();
             });
         }
 
         async function saveProject(proj) {
+            // Firestore保存直前にも確実に古いタスクを削除する
+            proj.tasks = proj.tasks.filter(t => !(t.completed && isOldTask(t.completedAt)));
+            
             if (currentUser) {
                 const docRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'projects', proj.id);
                 await setDoc(docRef, proj);
@@ -360,7 +333,6 @@
                 const task = proj.tasks.find(t => t.id === taskId);
                 if (task) {
                     task.completed = !task.completed;
-                    // 日本時間を基準に完了日を保存
                     task.completedAt = task.completed ? getJSTDateStr() : null;
                     await saveProject(proj);
                 }
