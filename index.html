@@ -91,6 +91,7 @@
             </div>
         </div>
 
+        <!-- タブ表示エリア -->
         <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
             <div class="flex border-b border-slate-200 bg-slate-50">
                 <button onclick="switchTab('timeline')" id="tab-timeline" class="flex-1 py-4 text-center tab-active hover:bg-slate-100 transition text-sm">
@@ -115,6 +116,7 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // --- Firebase Configuration ---
         const myFirebaseConfig = {
             apiKey: "AIzaSyC7mMddmukCPXkPX7Z2MD5fTcCFmUXnKGw",
             authDomain: "gakkai-task-manager.firebaseapp.com",
@@ -153,6 +155,7 @@
             }
         };
 
+        // --- Auth Setup ---
         try {
             app = initializeApp(myFirebaseConfig);
             auth = getAuth(app);
@@ -198,6 +201,7 @@
             fallbackInit();
         }
 
+        // --- Data Handling ---
         function fallbackInit() {
             const savedData = localStorage.getItem('gakkai_projects_v1');
             if (savedData) {
@@ -263,6 +267,7 @@
             }
         }
 
+        // --- UI Logic ---
         window.importProject = async function() {
             const name = document.getElementById('simName').value;
             const startDate = document.getElementById('simStartDate').value;
@@ -370,8 +375,12 @@
 
         window.switchTab = (tabId) => {
             window.currentTab = tabId;
-            document.getElementById('tab-timeline').className = `flex-1 py-4 text-center ${tabId === 'timeline' ? 'tab-active' : 'tab-inactive'} hover:bg-slate-100 transition text-sm`;
-            document.getElementById('tab-project').className = `flex-1 py-4 text-center ${tabId === 'project' ? 'tab-active' : 'tab-inactive'} hover:bg-slate-100 transition text-sm`;
+            const tlTab = document.getElementById('tab-timeline');
+            const pjTab = document.getElementById('tab-project');
+            if (tlTab && pjTab) {
+                tlTab.className = `flex-1 py-4 text-center ${tabId === 'timeline' ? 'tab-active' : 'tab-inactive'} hover:bg-slate-100 transition text-sm`;
+                pjTab.className = `flex-1 py-4 text-center ${tabId === 'project' ? 'tab-active' : 'tab-inactive'} hover:bg-slate-100 transition text-sm`;
+            }
             window.render();
         }
 
@@ -395,17 +404,23 @@
             return `<span class="inline-block px-1.5 py-0.5 rounded border text-[9px] font-bold ${colors[format] || colors['その他']} ml-1">${format}</span>`;
         }
 
+        // --- View Rendering ---
         window.render = () => {
             const container = document.getElementById('content-area');
             const statsEl = document.getElementById('overview-stats');
+            if (!container) return;
+            
             if (window.projects.length === 0) {
                 container.innerHTML = `<div class="text-center py-20 text-slate-400">プロジェクトがありません</div>`;
-                statsEl.classList.add('hidden');
+                if (statsEl) statsEl.classList.add('hidden');
                 return;
             }
-            statsEl.classList.remove('hidden');
-            let t = 0, d = 0; window.projects.forEach(p => { t += p.tasks.length; d += p.tasks.filter(x => x.completed).length; });
-            statsEl.innerHTML = `プロジェクト: ${window.projects.length} 件 | 達成率: ${Math.round((d/t)*100)||0}%`;
+            
+            if (statsEl) {
+                statsEl.classList.remove('hidden');
+                let t = 0, d = 0; window.projects.forEach(p => { t += p.tasks.length; d += p.tasks.filter(x => x.completed).length; });
+                statsEl.innerHTML = `プロジェクト: ${window.projects.length} 件 | 達成率: ${Math.round((d/t)*100)||0}%`;
+            }
             
             if (window.currentTab === 'project') renderProjectView(container);
             else renderTimelineView(container);
@@ -460,7 +475,10 @@
                                     <td class="p-3 w-10 text-center"><input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${proj.id}', '${t.id}')" class="w-4 h-4 accent-indigo-600"></td>
                                     <td class="p-3 font-medium ${t.completed ? 'line-through text-slate-400' : ''}">${t.name}</td>
                                     <td class="p-3 w-32"><input type="date" value="${t.dueDate}" onchange="updateDate('${proj.id}', '${t.id}', this.value)" class="text-xs border rounded p-1 w-full bg-white"></td>
-                                    <td class="p-3 w-10 text-right"><a href="${window.getGoogleCalendarUrl(t.name, t.dueDate, proj.name, proj.presentationTitle)}" target="_blank" title="Googleカレンダー">📅</a></td>
+                                    <td class="p-3 w-20 text-right space-x-2">
+                                        <a href="${window.getGoogleCalendarUrl(t.name, t.dueDate, proj.name, proj.presentationTitle)}" target="_blank" title="カレンダーに追加">📅</a>
+                                        <button onclick="deleteTask('${proj.id}', '${t.id}')" class="text-red-400 hover:text-red-600">🗑️</button>
+                                    </td>
                                 </tr>`).join('')}
                             </tbody>
                         </table>
@@ -474,7 +492,36 @@
         const renderTimelineView = (container) => {
             let all = []; window.projects.forEach(p => p.tasks.forEach(t => all.push({...t, pId: p.id, pName: p.name, pTitle: p.presentationTitle, pFormat: p.presentationFormat})));
             all.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-            container.innerHTML = `<div class="bg-white border rounded-xl shadow-sm overflow-hidden"><table class="w-full text-sm text-left"><thead class="bg-slate-900 text-white text-[11px] uppercase tracking-wider"><tr><th class="p-3 w-10 text-center">完了</th><th class="p-3 w-32">期日</th><th class="p-3">学会 / タスク</th><th class="p-3 w-10"></th></tr></thead><tbody class="divide-y">${all.map(t => `<tr class="${t.completed ? 'opacity-40 bg-slate-50' : 'hover:bg-slate-50'} transition border-slate-100"><td class="p-3 text-center"><input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.pId}', '${t.id}')" class="w-4 h-4 accent-indigo-600"></td><td class="p-3 font-black text-slate-700">${t.dueDate}</td><td class="p-3"><div class="text-[10px] opacity-60 font-bold flex items-center gap-1">${t.pName} ${window.getFormatBadge(t.pFormat)}</div><div class="${t.completed ? 'line-through text-slate-400' : 'font-medium text-slate-800'}">${t.name}</div></td><td class="p-3"><a href="${window.getGoogleCalendarUrl(t.name, t.dueDate, t.pName, t.pTitle)}" target="_blank">📅</a></td></tr>`).join('')}</tbody></table></div>`;
+            container.innerHTML = `
+            <div class="bg-white border rounded-xl shadow-sm overflow-hidden">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-900 text-white text-[11px] uppercase tracking-wider">
+                        <tr>
+                            <th class="p-3 w-10 text-center">完了</th>
+                            <th class="p-3 w-32">期日</th>
+                            <th class="p-3">学会 / タスク</th>
+                            <th class="p-3 w-24 text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y border-slate-100">
+                        ${all.map(t => `
+                        <tr class="${t.completed ? 'opacity-40 bg-slate-50' : 'hover:bg-slate-50'} transition">
+                            <td class="p-3 text-center">
+                                <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.pId}', '${t.id}')" class="w-4 h-4 accent-indigo-600">
+                            </td>
+                            <td class="p-3 font-black text-slate-700">${t.dueDate}</td>
+                            <td class="p-3">
+                                <div class="text-[10px] opacity-60 font-bold flex items-center gap-1">${t.pName} ${window.getFormatBadge(t.pFormat)}</div>
+                                <div class="${t.completed ? 'line-through text-slate-400' : 'font-medium text-slate-800'}">${t.name}</div>
+                            </td>
+                            <td class="p-3 text-center space-x-2">
+                                <a href="${window.getGoogleCalendarUrl(t.name, t.dueDate, t.pName, t.pTitle)}" target="_blank" title="カレンダーに追加">📅</a>
+                                <button onclick="deleteTask('${t.pId}', '${t.id}')" class="text-red-400 hover:text-red-600">🗑️</button>
+                            </td>
+                        </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>`;
         }
     </script>
 </body>
