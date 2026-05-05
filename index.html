@@ -142,26 +142,32 @@
         let currentUser = null;
         const APP_ID = 'gakkai_app'; 
 
-        // 確実な日付比較のための関数（昨日以前ならtrue）
-        function isOldTask(completedAt) {
-            if (!completedAt) return true; // 記録がなければ古いとみなす
-            const match = String(completedAt).match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-            if (!match) return true; 
-            const tDate = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
-            const d = new Date();
-            d.setMinutes(d.getMinutes() + d.getTimezoneOffset() + 540); // JSTに変換
-            const todayDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-            return tDate.getTime() < todayDate.getTime();
-        }
-
-        // JSTの現在日付文字列を取得
+        // 日本時間(JST)の「今日の日付 (YYYY-MM-DD)」を確実に計算する
         function getJSTDateStr() {
             const d = new Date();
-            d.setMinutes(d.getMinutes() + d.getTimezoneOffset() + 540);
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
+            // 世界標準時に9時間足して、強制的に日本時間にする
+            d.setTime(d.getTime() + 9 * 60 * 60 * 1000);
+            return d.toISOString().split('T')[0];
+        }
+
+        // そのタスクが「昨日以前」に完了したものかを判定
+        function isOldTask(completedAt) {
+            if (!completedAt) return true; // 日付記録がない古いバグ時代のものは即消す
+            // "2026-05-04" < "2026-05-05" のような文字列の比較で確実に判定
+            return completedAt < getJSTDateStr();
+        }
+
+        // 画面に表示する前に、古いタスクを除外する（通信はしない）
+        function cleanupProjects(projectsList) {
+            return projectsList.map(proj => {
+                const newProj = { ...proj };
+                newProj.tasks = proj.tasks.filter(t => {
+                    // 完了済み かつ 昨日以前 なら除外（消す）
+                    if (t.completed && isOldTask(t.completedAt)) return false;
+                    return true;
+                });
+                return newProj;
+            });
         }
 
         const showError = (msg) => {
@@ -213,25 +219,12 @@
             fallbackInit();
         }
 
-        // メモリ上でタスクをクリーンアップ
-        function cleanupOldTasks(projectsList) {
-            projectsList.forEach(proj => {
-                proj.tasks = proj.tasks.filter(t => {
-                    // 完了済み かつ 「昨日以前(isOldTask)」なら画面から消す
-                    if (t.completed && isOldTask(t.completedAt)) {
-                        return false;
-                    }
-                    return true;
-                });
-            });
-            return projectsList;
-        }
-
         function fallbackInit() {
             const savedData = localStorage.getItem('gakkai_projects_v1');
             if (savedData) {
                 let localProjects = JSON.parse(savedData);
-                window.projects = cleanupOldTasks(localProjects);
+                // 画面表示用にフィルタリング
+                window.projects = cleanupProjects(localProjects);
                 localStorage.setItem('gakkai_projects_v1', JSON.stringify(window.projects));
             }
             window.render();
@@ -243,16 +236,17 @@
             onSnapshot(projectsRef, (snapshot) => {
                 let syncedProjects = [];
                 snapshot.forEach(doc => syncedProjects.push({ id: doc.id, ...doc.data() }));
-                // 読み込み時に表示から消す（競合を防ぐためここでFirestore自動保存はしない）
-                window.projects = cleanupOldTasks(syncedProjects);
+                
+                // 通信エラーを防ぐため、ここでは「画面上から消す」だけに留める
+                window.projects = cleanupProjects(syncedProjects);
                 window.render();
             });
         }
 
         async function saveProject(proj) {
-            // Firestore保存直前にも確実に古いタスクを削除する
+            // 保存する直前に、不要なゴミタスクをデータからも消去する
             proj.tasks = proj.tasks.filter(t => !(t.completed && isOldTask(t.completedAt)));
-            
+
             if (currentUser) {
                 const docRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'projects', proj.id);
                 await setDoc(docRef, proj);
