@@ -103,7 +103,7 @@
             </div>
         </div>
         <div class="mt-4 text-center text-slate-400 text-[10px]">
-            ※完了したタスクは、翌日（日本時間）になると自動的に整理・消去されます。
+            ※完了したタスクは翌日になると自動的に非表示になります（非表示になっても進捗率には反映され続けます）。完全に削除する場合はゴミ箱アイコンを押してください。
         </div>
     </div>
 
@@ -142,32 +142,21 @@
         let currentUser = null;
         const APP_ID = 'gakkai_app'; 
 
-        // 日本時間(JST)の「今日の日付 (YYYY-MM-DD)」を環境に依存せず確実に計算する
+        // 日本時間(JST)の「今日の日付 (YYYY-MM-DD)」を計算
         function getJSTDateStr() {
-            const now = new Date();
+            const d = new Date();
             // 協定世界時(UTC)を計算し、そこから日本時間(+9時間)を算出
-            const jstTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (9 * 60 * 60 * 1000));
+            const jstTime = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) + (9 * 60 * 60 * 1000));
             const y = jstTime.getFullYear();
             const m = String(jstTime.getMonth() + 1).padStart(2, '0');
             const day = String(jstTime.getDate()).padStart(2, '0');
             return `${y}-${m}-${day}`;
         }
 
-        // 画面に表示する前に、古いタスクを除外する（通信はしない）
-        function cleanupProjects(projectsList) {
-            const todayStr = getJSTDateStr();
-            return projectsList.map(proj => {
-                const newProj = { ...proj };
-                newProj.tasks = proj.tasks.filter(t => {
-                    // ★最強のルール：「完了済み」かつ「完了日が"今日"ではない」タスクはすべて消去
-                    // （昨日チェックしたものや、日付データがおかしくなったものは例外なく消えます）
-                    if (t.completed && t.completedAt !== todayStr) {
-                        return false;
-                    }
-                    return true;
-                });
-                return newProj;
-            });
+        // そのタスクが「昨日以前」に完了したものかを判定する関数
+        function isOldTask(completedAt) {
+            if (!completedAt) return true; // 日付記録がない古いバグ時代のものは古いとみなす
+            return completedAt < getJSTDateStr();
         }
 
         const showError = (msg) => {
@@ -222,10 +211,7 @@
         function fallbackInit() {
             const savedData = localStorage.getItem('gakkai_projects_v1');
             if (savedData) {
-                let localProjects = JSON.parse(savedData);
-                // 画面表示用にフィルタリング
-                window.projects = cleanupProjects(localProjects);
-                localStorage.setItem('gakkai_projects_v1', JSON.stringify(window.projects));
+                window.projects = JSON.parse(savedData);
             }
             window.render();
         }
@@ -236,18 +222,12 @@
             onSnapshot(projectsRef, (snapshot) => {
                 let syncedProjects = [];
                 snapshot.forEach(doc => syncedProjects.push({ id: doc.id, ...doc.data() }));
-                
-                // 通信エラーを防ぐため、ここでは「画面上から消す」だけに留める
-                window.projects = cleanupProjects(syncedProjects);
+                window.projects = syncedProjects;
                 window.render();
             });
         }
 
         async function saveProject(proj) {
-            const todayStr = getJSTDateStr();
-            // 保存する直前に、不要なゴミタスクをデータからも確実に消去する
-            proj.tasks = proj.tasks.filter(t => !(t.completed && t.completedAt !== todayStr));
-
             if (currentUser) {
                 const docRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'projects', proj.id);
                 await setDoc(docRef, proj);
@@ -419,6 +399,7 @@
             
             if (statsEl) {
                 statsEl.classList.remove('hidden');
+                // 進捗率は「データ上の全タスク」を対象に計算するため、非表示になったタスクもカウントされます
                 let t = 0, d = 0; window.projects.forEach(p => { t += p.tasks.length; d += p.tasks.filter(x => x.completed).length; });
                 statsEl.innerHTML = `プロジェクト: ${window.projects.length} 件 | 達成率: ${Math.round((d/t)*100)||0}%`;
             }
@@ -431,8 +412,18 @@
             const sortedProjects = [...window.projects].sort((a, b) => new Date(a.startDate || 0) - new Date(b.startDate || 0));
             let html = '<div class="space-y-4">';
             sortedProjects.forEach(proj => {
+                // 進捗率は「見えないタスク」も含めて計算
                 const done = proj.tasks.filter(t => t.completed).length;
                 const progress = Math.round((done / proj.tasks.length) * 100) || 0;
+                
+                // 画面に描画する用のタスク配列（昨日以前に完了したタスクを除外）
+                const visibleTasks = proj.tasks.filter(t => !(t.completed && isOldTask(t.completedAt)));
+                
+                // 学会名にリンクを付与
+                const nameHtml = proj.url 
+                    ? `<a href="${proj.url}" target="_blank" onclick="event.stopPropagation()" class="hover:text-indigo-600 hover:underline transition text-indigo-900" title="学会のウェブサイトを開く">${proj.name} <span class="text-xs">🔗</span></a>`
+                    : proj.name;
+
                 html += `
                 <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                     ${proj.isEditing ? `
@@ -450,7 +441,7 @@
                         <div class="flex items-center gap-3">
                             <span class="text-slate-400 text-sm">${proj.isExpanded ? '▼' : '▶'}</span>
                             <div>
-                                <h3 class="font-black text-slate-800 flex items-center gap-1">${proj.name} ${window.getFormatBadge(proj.presentationFormat)}</h3>
+                                <h3 class="font-black text-slate-800 flex items-center gap-1">${nameHtml} ${window.getFormatBadge(proj.presentationFormat)}</h3>
                                 <div class="text-[10px] text-slate-500 font-medium">日程: ${proj.startDate}〜${proj.endDate} | ${proj.presentationTitle || '発表未定'}</div>
                             </div>
                         </div>
@@ -464,7 +455,7 @@
                     <div class="${proj.isExpanded && !proj.isEditing ? 'block' : 'hidden'} border-t bg-slate-50">
                         <table class="w-full text-sm text-left">
                             <tbody>
-                                ${proj.tasks.map(t => `<tr class="${t.completed ? 'opacity-40' : ''} border-b border-slate-200 hover:bg-white transition">
+                                ${visibleTasks.map(t => `<tr class="${t.completed ? 'opacity-40' : ''} border-b border-slate-200 hover:bg-white transition">
                                     <td class="p-3 w-10 text-center"><input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${proj.id}', '${t.id}')" class="w-4 h-4 accent-indigo-600"></td>
                                     <td class="p-3 font-medium ${t.completed ? 'line-through text-slate-400' : ''}">${t.name}</td>
                                     <td class="p-3 w-32"><input type="date" value="${t.dueDate}" onchange="updateDate('${proj.id}', '${t.id}', this.value)" class="text-xs border rounded p-1 w-full bg-white"></td>
@@ -483,8 +474,17 @@
         }
 
         const renderTimelineView = (container) => {
-            let all = []; window.projects.forEach(p => p.tasks.forEach(t => all.push({...t, pId: p.id, pName: p.name, pTitle: p.presentationTitle, pFormat: p.presentationFormat})));
+            let all = []; 
+            window.projects.forEach(p => {
+                p.tasks.forEach(t => {
+                    // 描画用のタスク（昨日以前に完了したタスクは表示しない）
+                    if (!(t.completed && isOldTask(t.completedAt))) {
+                        all.push({...t, pId: p.id, pName: p.name, pTitle: p.presentationTitle, pFormat: p.presentationFormat, pUrl: p.url});
+                    }
+                });
+            });
             all.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
             container.innerHTML = `
             <div class="bg-white border rounded-xl shadow-sm overflow-hidden">
                 <table class="w-full text-sm text-left">
@@ -492,19 +492,24 @@
                         <tr><th class="p-3 w-10 text-center">完了</th><th class="p-3 w-32">期日</th><th class="p-3">学会 / タスク</th><th class="p-3 w-24 text-center">操作</th></tr>
                     </thead>
                     <tbody class="divide-y border-slate-100">
-                        ${all.map(t => `
+                        ${all.map(t => {
+                            // タイムラインの学会名にもリンクを付与
+                            const nameHtml = t.pUrl 
+                                ? `<a href="${t.pUrl}" target="_blank" onclick="event.stopPropagation()" class="hover:text-indigo-600 hover:underline" title="学会サイトを開く">${t.pName} <span class="text-[8px]">🔗</span></a>` 
+                                : t.pName;
+                            return `
                         <tr class="${t.completed ? 'opacity-40 bg-slate-50' : 'hover:bg-slate-50'} transition">
                             <td class="p-3 text-center"><input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.pId}', '${t.id}')" class="w-4 h-4 accent-indigo-600"></td>
                             <td class="p-3 font-black text-slate-700">${t.dueDate}</td>
                             <td class="p-3">
-                                <div class="text-[10px] opacity-60 font-bold flex items-center gap-1">${t.pName} ${window.getFormatBadge(t.pFormat)}</div>
+                                <div class="text-[10px] opacity-60 font-bold flex items-center gap-1">${nameHtml} ${window.getFormatBadge(t.pFormat)}</div>
                                 <div class="${t.completed ? 'line-through text-slate-400' : 'font-medium text-slate-800'}">${t.name}</div>
                             </td>
                             <td class="p-3 text-center space-x-2">
                                 <a href="${window.getGoogleCalendarUrl(t.name, t.dueDate, t.pName, t.pTitle)}" target="_blank" title="カレンダーに追加">📅</a>
                                 <button onclick="deleteTask('${t.pId}', '${t.id}')" class="text-red-400 hover:text-red-600" title="タスク削除">🗑️</button>
                             </td>
-                        </tr>`).join('')}
+                        </tr>`}).join('')}
                     </tbody>
                 </table>
             </div>`;
