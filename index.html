@@ -103,6 +103,7 @@
             </div>
         </div>
         <div class="mt-4 text-center text-slate-400 text-[10px]">
+            ※タスク名や期日を直接クリックして編集できます。<br>
             ※完了したタスクは翌日になると自動的に非表示になります（非表示になっても進捗率には反映され続けます）。完全に削除する場合はゴミ箱アイコンを押してください。
         </div>
     </div>
@@ -334,6 +335,19 @@
             }
         }
 
+        // タスク名の編集機能を追加
+        window.updateTaskName = async function(projectId, taskId, newName) {
+            if (!newName.trim()) return; // 空なら無視
+            const proj = window.projects.find(p => p.id === projectId);
+            if (proj) {
+                const task = proj.tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.name = newName.trim();
+                    await saveProject(proj);
+                }
+            }
+        }
+
         window.toggleProjectExpand = async function(id) {
             const p = window.projects.find(x => x.id === id);
             if(p){ p.isExpanded = !p.isExpanded; await saveProject(p); }
@@ -457,7 +471,7 @@
                             <tbody>
                                 ${visibleTasks.map(t => `<tr class="${t.completed ? 'opacity-40' : ''} border-b border-slate-200 hover:bg-white transition">
                                     <td class="p-3 w-10 text-center"><input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${proj.id}', '${t.id}')" class="w-4 h-4 accent-indigo-600"></td>
-                                    <td class="p-3 font-medium ${t.completed ? 'line-through text-slate-400' : ''}">${t.name}</td>
+                                    <td class="p-3"><input type="text" value="${t.name}" onchange="updateTaskName('${proj.id}', '${t.id}', this.value)" class="w-full bg-transparent border border-transparent hover:border-slate-200 focus:border-indigo-500 focus:bg-white rounded px-2 py-1 outline-none text-sm ${t.completed ? 'line-through text-slate-400' : 'font-medium text-slate-800'}"></td>
                                     <td class="p-3 w-32"><input type="date" value="${t.dueDate}" onchange="updateDate('${proj.id}', '${t.id}', this.value)" class="text-xs border rounded p-1 w-full bg-white"></td>
                                     <td class="p-3 w-24 text-right space-x-2">
                                         <a href="${window.getGoogleCalendarUrl(t.name, t.dueDate, proj.name, proj.presentationTitle)}" target="_blank" title="カレンダーに追加">📅</a>
@@ -500,10 +514,12 @@
                             return `
                         <tr class="${t.completed ? 'opacity-40 bg-slate-50' : 'hover:bg-slate-50'} transition">
                             <td class="p-3 text-center"><input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.pId}', '${t.id}')" class="w-4 h-4 accent-indigo-600"></td>
-                            <td class="p-3 font-black text-slate-700">${t.dueDate}</td>
+                            <td class="p-3 font-black text-slate-700">
+                                <input type="date" value="${t.dueDate}" onchange="updateDate('${t.pId}', '${t.id}', this.value)" class="text-xs border border-transparent hover:border-slate-200 focus:border-indigo-500 rounded p-1 w-full bg-transparent focus:bg-white outline-none">
+                            </td>
                             <td class="p-3">
                                 <div class="text-[10px] opacity-60 font-bold flex items-center gap-1">${nameHtml} ${window.getFormatBadge(t.pFormat)}</div>
-                                <div class="${t.completed ? 'line-through text-slate-400' : 'font-medium text-slate-800'}">${t.name}</div>
+                                <input type="text" value="${t.name}" onchange="updateTaskName('${t.pId}', '${t.id}', this.value)" class="w-full mt-1 bg-transparent border border-transparent hover:border-slate-200 focus:border-indigo-500 focus:bg-white rounded px-1 outline-none text-sm ${t.completed ? 'line-through text-slate-400' : 'font-medium text-slate-800'}">
                             </td>
                             <td class="p-3 text-center space-x-2">
                                 <a href="${window.getGoogleCalendarUrl(t.name, t.dueDate, t.pName, t.pTitle)}" target="_blank" title="カレンダーに追加">📅</a>
