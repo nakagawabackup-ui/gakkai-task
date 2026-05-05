@@ -436,7 +436,7 @@
                 statsEl.classList.remove('hidden');
                 // 進捗率は「データ上の全タスク」を対象に計算するため、非表示になったタスクもカウントされます
                 let t = 0, d = 0; window.projects.forEach(p => { t += p.tasks.length; d += p.tasks.filter(x => x.completed).length; });
-                statsEl.innerHTML = `プロジェクト: ${window.projects.length} 件 | 達成率: ${Math.round((d/t)*100)||0}%`;
+                statsEl.innerHTML = `進行中のプロジェクト: ${window.projects.length} 件 | 達成率: ${Math.round((d/t)*100)||0}%`;
             }
             
             if (window.currentTab === 'project') renderProjectView(container);
