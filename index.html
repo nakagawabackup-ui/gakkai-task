@@ -142,28 +142,28 @@
         let currentUser = null;
         const APP_ID = 'gakkai_app'; 
 
-        // 日本時間(JST)の「今日の日付 (YYYY-MM-DD)」を確実に計算する
+        // 日本時間(JST)の「今日の日付 (YYYY-MM-DD)」を環境に依存せず確実に計算する
         function getJSTDateStr() {
-            const d = new Date();
-            // 世界標準時に9時間足して、強制的に日本時間にする
-            d.setTime(d.getTime() + 9 * 60 * 60 * 1000);
-            return d.toISOString().split('T')[0];
-        }
-
-        // そのタスクが「昨日以前」に完了したものかを判定
-        function isOldTask(completedAt) {
-            if (!completedAt) return true; // 日付記録がない古いバグ時代のものは即消す
-            // "2026-05-04" < "2026-05-05" のような文字列の比較で確実に判定
-            return completedAt < getJSTDateStr();
+            const now = new Date();
+            // 協定世界時(UTC)を計算し、そこから日本時間(+9時間)を算出
+            const jstTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (9 * 60 * 60 * 1000));
+            const y = jstTime.getFullYear();
+            const m = String(jstTime.getMonth() + 1).padStart(2, '0');
+            const day = String(jstTime.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
         }
 
         // 画面に表示する前に、古いタスクを除外する（通信はしない）
         function cleanupProjects(projectsList) {
+            const todayStr = getJSTDateStr();
             return projectsList.map(proj => {
                 const newProj = { ...proj };
                 newProj.tasks = proj.tasks.filter(t => {
-                    // 完了済み かつ 昨日以前 なら除外（消す）
-                    if (t.completed && isOldTask(t.completedAt)) return false;
+                    // ★最強のルール：「完了済み」かつ「完了日が"今日"ではない」タスクはすべて消去
+                    // （昨日チェックしたものや、日付データがおかしくなったものは例外なく消えます）
+                    if (t.completed && t.completedAt !== todayStr) {
+                        return false;
+                    }
                     return true;
                 });
                 return newProj;
@@ -244,8 +244,9 @@
         }
 
         async function saveProject(proj) {
-            // 保存する直前に、不要なゴミタスクをデータからも消去する
-            proj.tasks = proj.tasks.filter(t => !(t.completed && isOldTask(t.completedAt)));
+            const todayStr = getJSTDateStr();
+            // 保存する直前に、不要なゴミタスクをデータからも確実に消去する
+            proj.tasks = proj.tasks.filter(t => !(t.completed && t.completedAt !== todayStr));
 
             if (currentUser) {
                 const docRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'projects', proj.id);
